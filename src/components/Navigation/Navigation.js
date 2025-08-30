@@ -1,20 +1,75 @@
 import React from 'react';
+import ProfileIcon from '../Profile/ProfileIcon';
 
-const Navigation = ({ onRouteChange, isSignedIn }) => {
-    if (isSignedIn) {
-      return (
-        <nav style={{display: 'flex', justifyContent: 'flex-end'}}>
-          <p onClick={() => onRouteChange('signout')} className='f3 link dim black underline pa3 pointer'>Sign Out</p>
-        </nav>
-      );
-    } else {
-      return (
-        <nav style={{display: 'flex', justifyContent: 'flex-end'}}>
-          <p onClick={() => onRouteChange('signin')} className='f3 link dim black underline pa3 pointer'>Sign In</p>
-          <p onClick={() => onRouteChange('register')} className='f3 link dim black underline pa3 pointer'>Register</p>
-        </nav>
-      );
-    }
+const buttonStyle = {
+  background: 'rgba(255, 255, 255, 0.2)', 
+  color: '#000',
+  fontSize: '1rem',
+  padding: '10px 20px',
+  border: '1px solid rgba(255, 255, 255, 0.3)',
+  borderRadius: '12px',
+  backdropFilter: 'blur(10px)',
+  WebkitBackdropFilter: 'blur(10px)',
+  cursor: 'pointer',
+  margin: '10px',
+  boxShadow: '0 8px 32px 0 rgba(31, 38, 135, 0.2)',
+  transition: 'all 0.3s ease',
+};
+
+const hoverStyle = {
+  transform: 'translateY(-2px)',
+  boxShadow: '0 10px 25px rgba(31, 38, 135, 0.3)',
+  background: 'rgba(255, 255, 255, 0.3)',
+};
+
+class Navigation extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = {
+      hover: null
+    };
+  }
+
+  handleHover = (name) => this.setState({ hover: name });
+  handleLeave = () => this.setState({ hover: null });
+
+  render() {
+    const { onRouteChange, isSignedIn, toggleModal, user } = this.props;
+    const { hover } = this.state;
+
+    return (
+      <nav style={{ display: 'flex', justifyContent: 'flex-end', padding: '10px 20px' }}>
+        {isSignedIn ? (
+          <ProfileIcon onRouteChange={onRouteChange} toggleModal={toggleModal} userAvatar={user.avatar}/>
+        ) : (
+          <>
+            <button
+              onClick={() => onRouteChange('signin')}
+              onMouseEnter={() => this.handleHover('signin')}
+              onMouseLeave={this.handleLeave}
+              style={{
+                ...buttonStyle,
+                ...(hover === 'signin' ? hoverStyle : {})
+              }}
+            >
+              Sign In
+            </button>
+            <button
+              onClick={() => onRouteChange('register')}
+              onMouseEnter={() => this.handleHover('register')}
+              onMouseLeave={this.handleLeave}
+              style={{
+                ...buttonStyle,
+                ...(hover === 'register' ? hoverStyle : {})
+              }}
+            >
+              Register
+            </button>
+          </>
+        )}
+      </nav>
+    );
+  }
 }
 
 export default Navigation;

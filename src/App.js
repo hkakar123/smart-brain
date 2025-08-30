@@ -1,132 +1,291 @@
+// App.js (Updated with modern loading screen and persistent login fix)
 import React, { Component } from 'react';
-// import Particles from 'react-particles-js'; 
-import ParticlesBg from 'particles-bg'
-import FaceRecognition from './components/FaceRecognition/FaceRecognition';
 import Navigation from './components/Navigation/Navigation';
 import Signin from './components/Signin/Signin';
-import Register from './components/Register/Register';
 import Logo from './components/Logo/Logo';
 import ImageLinkForm from './components/ImageLinkForm/ImageLinkForm';
+import Register from './components/Register/Register';
 import Rank from './components/Rank/Rank';
+import Particles from "@tsparticles/react";
+import { loadSlim } from "@tsparticles/slim";
 import './App.css';
+import FaceRecognition from './components/FaceRecognition/FaceRecognition';
+import Modal from './components/Modal/Modal';
+import Profile from './components/Profile/Profile';
+import LoadingScreen from './components/LoadingScreen/LoadingScreen';
 
-const initialState = {
-  input: '',
-  imageUrl: '',
-  box: {},
-  route: 'signin',
-  isSignedIn: false,
-  user: {
-    id: '',
-    name: '',
-    email: '',
-    entries: 0,
-    joined: ''
-  }
-}
-
+const API_BASE_URL = 'http://localhost:3000';
 
 class App extends Component {
-  constructor() {
-    super();
-    this.state = initialState;
+  constructor(props) {
+    super(props);
+    this.state = {
+      init: false,
+      input: '',
+      imageUrl: '',
+      box: [],  
+      route: 'signin', 
+      isSignedIn: false,
+      isProfileOpen: false,
+      detectError: '',
+      loading: true,       
+      user: {
+        id: '',
+        name: '',
+        email: '',
+        entries: 0, 
+        joined: '',
+        pet: '',
+        age: ''
+      }
+    };
   }
 
-  loadUser = (data) => {
-    this.setState({user: {
+loadUser = (data) => {
+  this.setState({
+    user: {
       id: data.id,
       name: data.name,
       email: data.email,
       entries: data.entries,
-      joined: data.joined
-    }})
-  }
-
-  calculateFaceLocation = (data) => {
-    const clarifaiFace = data.outputs[0].data.regions[0].region_info.bounding_box;
-    const image = document.getElementById('inputimage');
-    const width = Number(image.width);
-    const height = Number(image.height);
-    return {
-      leftCol: clarifaiFace.left_col * width,
-      topRow: clarifaiFace.top_row * height,
-      rightCol: width - (clarifaiFace.right_col * width),
-      bottomRow: height - (clarifaiFace.bottom_row * height)
+      joined: data.joined,
+      pet: data.pet || '',
+      age: data.age || '',
+      avatar: data.avatar || '' 
     }
-  }
+  });
+}
 
-  displayFaceBox = (box) => {
-    this.setState({box: box});
+  async componentDidMount() {
+    const initParticles = async (engine) => {
+      await loadSlim(engine);
+    };
+
+    const { initParticlesEngine } = await import("@tsparticles/react");
+    await initParticlesEngine(initParticles);
+    this.setState({ init: true });
+
+    const token = window.sessionStorage.getItem('token');
+    if (token) {
+      try {
+        const resp = await fetch(`${API_BASE_URL}/signin`, {
+          method: 'post',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': token
+          }
+        });
+        const data = await resp.json();
+        if (data && data.id) {
+          const profileResp = await fetch(`${API_BASE_URL}/profile/${data.id}`, {
+            method: 'get',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': token
+            }
+          });
+          const user = await profileResp.json();
+          if (user && user.email) {
+            this.loadUser(user);
+            this.setState({ isSignedIn: true, route: 'home' });
+          }
+        }
+      } catch (err) {
+        console.error('Persistent login failed:', err);
+      }
+    }
+    this.setState({ loading: false });
   }
 
   onInputChange = (event) => {
-    this.setState({input: event.target.value});
-  }
+    this.setState({ input: event.target.value });
+  };
 
-  onButtonSubmit = () => {
-    this.setState({imageUrl: this.state.input});
-      fetch('http://localhost:3000/imageurl', {
-        method: 'post',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({
-          input: this.state.input
-        })
-      })
-      .then(response => response.json())
-      .then(response => {
-        if (response) {
-          fetch('http://localhost:3000/image', {
-            method: 'put',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({
-              id: this.state.user.id
-            })
-          })
-            .then(response => response.json())
-            .then(count => {
-              this.setState(Object.assign(this.state.user, { entries: count}))
-            })
-            .catch(console.log)
+  calculateFaceLocations = (data) => {
 
-        }
-        this.displayFaceBox(this.calculateFaceLocation(response))
-      })
-      .catch(err => console.log(err));
-  }
+    if (!data.outputs || !data.outputs[0].data.regions) return [];
+    const image = document.getElementById('inputimage');
+    const width = Number(image.width);
+    const height = Number(image.height);
+    
+    return data.outputs[0].data.regions.map(region => {
+      const boundingBox = region.region_info.bounding_box;
+      return {
+        leftCol: boundingBox.left_col * width,
+        topRow: boundingBox.top_row * height,
+        rightCol: width - (boundingBox.right_col * width),
+        bottomRow: height - (boundingBox.bottom_row * height),
+      };
+    });
+  };
 
-  onRouteChange = (route) => {
-    if (route === 'signout') {
-      this.setState(initialState)
-    } else if (route === 'home') {
-      this.setState({isSignedIn: true})
+  displayFaceBox = (boxes) => {
+    if(boxes) {
+    this.setState({ box: boxes });      
     }
-    this.setState({route: route});
+  };
+
+onButtonSubmit = () => {
+  if (!this.state.input.trim()) {
+    this.setState({ detectError: 'Please enter a valid image URL before detecting.' });
+    return;
+  }
+
+  this.setState({ detectError: '' });
+
+  fetch(`${API_BASE_URL}/imageurl`, {
+    method: 'post',
+    headers: { 
+      'Content-Type': 'application/json',
+      'Authorization': window.sessionStorage.getItem('token') 
+    },
+    body: JSON.stringify({ input: this.state.input })
+  })
+  .then(async response => {
+    if (response.status === 401) {
+      this.setState({ 
+        detectError: 'Unauthorized. Please sign in again.', 
+        imageUrl: '',            
+        boxes: []               
+      });
+      return null; 
+    }
+    return response.json();
+  })
+  .then(response => {
+    if (!response) return; 
+
+    if (response.outputs) {
+      // ✅ only set image now, after authorization confirmed
+      this.setState({ imageUrl: this.state.input });
+
+      fetch(`${API_BASE_URL}/image`, {
+        method: 'put',
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': window.sessionStorage.getItem('token') 
+        },
+        body: JSON.stringify({ id: this.state.user.id })
+      })
+      .then(resp => resp.json())
+      .then(count => {
+        this.setState(prevState => ({
+          user: {
+            ...prevState.user,
+            entries: Number(count.entries ?? count)
+          }
+        }));
+      })
+      .catch(console.log);
+
+      const boxes = this.calculateFaceLocations(response);
+      this.displayFaceBox(boxes);
+    }
+  })
+  .catch(err => {
+    console.error(err);
+    this.setState({ detectError: 'Something went wrong. Try again.' });
+  });
+};
+
+
+ onRouteChange = async (route) => {
+  if(route === 'signout') {
+    const token = window.sessionStorage.getItem('token');
+    if(token){
+      try {
+        await fetch(`${API_BASE_URL}/signout`, {
+          method: 'post',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': token
+          }
+        });
+      } catch(err) {
+        console.error('Error signing out:', err);
+      }
+    }
+
+    window.sessionStorage.removeItem('token'); // remove token from session storage
+    return this.setState({
+      isSignedIn: false, 
+      user: {
+        id: '',
+        name: '',
+        email: '',
+        entries: 0,
+        joined: '',
+        pet: '',
+        age: '',
+        avatar: ''
+      },
+      route: 'signin',
+      imageUrl: '',
+      input: '',
+      box: [],
+      detectError: ''
+    });
+  } else if(route === 'home') {
+    this.setState({ route: route, isSignedIn: true });
+  } else {
+    this.setState({ route: route });
+  }
+}
+
+  toggleModal = () => {
+    this.setState(prevState => ({
+      isProfileOpen: !prevState.isProfileOpen
+    }));
   }
 
   render() {
-    const { isSignedIn, imageUrl, route, box } = this.state;
+    const { isSignedIn, imageUrl, route, box, detectError, isProfileOpen, user, loading } = this.state;
+
+    if (loading) {
+      return <LoadingScreen />;
+    }
+
     return (
       <div className="App">
-        <ParticlesBg type="circle" bg={true} />
-        <Navigation isSignedIn={isSignedIn} onRouteChange={this.onRouteChange} />
-        { route === 'home'
-          ? <div>
-              <Logo />
-              <Rank
-                name={this.state.user.name}
-                entries={this.state.user.entries}
-              />
-              <ImageLinkForm
-                onInputChange={this.onInputChange}
-                onButtonSubmit={this.onButtonSubmit}
-              />
-              <FaceRecognition box={box} imageUrl={imageUrl} />
-            </div>
-          : (
-             route === 'signin'
-             ? <Signin loadUser={this.loadUser} onRouteChange={this.onRouteChange}/>
-             : <Register loadUser={this.loadUser} onRouteChange={this.onRouteChange}/>
-            )
+        {this.state.init && (
+          <Particles className="particles" id="tsparticles"
+            options={{
+              background: { color: { value: "transparent" }},
+              fpsLimit: 120,
+              interactivity: {
+                events: { onClick: { enable: true, mode: "push" }, onHover: { enable: true, mode: "repulse" }, resize: true },
+                modes: { push: { quantity: 4 }, repulse: { distance: 200, duration: 0.4 } }
+              },
+              particles: {
+                color: { value: "#ffffff" },
+                links: { color: "#ffffff", distance: 150, enable: true, opacity: 0.5, width: 1 },
+                move: { direction: "none", enable: true, outModes: { default: "bounce" }, speed: 2 },
+                number: { density: { enable: true, area: 800 }, value: 200 },
+                opacity: { value: 0.5 },
+                shape: { type: "image", image: { src: "https://craftkreatively.com/cdn/shop/files/412152fa-fa1c-5994-b289-f115f30df93e.jpg?v=1710446922&width=2363", width: 32, height: 32 }},
+                size: { value: { min: 1, max: 5 } }
+              },
+              detectRetina: true
+            }}
+          />
+        )}
+        <Navigation isSignedIn={isSignedIn} onRouteChange={this.onRouteChange} toggleModal={this.toggleModal} user={user}/>
+        { route === 'home' ? 
+          <div>
+            { isProfileOpen && (
+              <Modal>
+                <Profile loadUser={this.loadUser} user={user} isProfileOpen={isProfileOpen} toggleModal={this.toggleModal}/>
+              </Modal> 
+            )}
+            <Logo />
+            <Rank name={user.name} entries={user.entries}/>
+            <ImageLinkForm onInputChange={this.onInputChange} onButtonSubmit={this.onButtonSubmit} />
+            <FaceRecognition imageUrl={imageUrl} box={box} error={detectError} />
+          </div>
+          : (route === 'signin' 
+            ? <Signin loadUser={this.loadUser} onRouteChange={this.onRouteChange}/> 
+            : <Register loadUser={this.loadUser} onRouteChange={this.onRouteChange}/>
+          )
         }
       </div>
     );

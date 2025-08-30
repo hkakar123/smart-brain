@@ -1,79 +1,134 @@
 import React from 'react';
 
+const inputStyle = {
+  borderColor: 'rgba(255, 255, 255, 0.3)',
+  color: '#fff',
+  borderRadius: '8px',
+  backdropFilter: 'blur(10px)',
+  WebkitBackdropFilter: 'blur(10px)',
+  transition: 'border-color 0.3s ease',
+  backgroundColor: 'rgba(255, 255, 255, 0.1)',
+  padding: '0.5rem',
+};
+
+const buttonStyle = {
+  background: 'rgba(255, 255, 255, 0.15)',
+  color: '#fff',
+  fontSize: '1rem',
+  padding: '10px 28px',
+  border: '1px solid rgba(255, 255, 255, 0.25)',
+  borderRadius: '12px',
+  backdropFilter: 'blur(10px)',
+  WebkitBackdropFilter: 'blur(10px)',
+  cursor: 'pointer',
+  boxShadow: '0 8px 32px rgba(0,0,0,0.2)',
+  transition: 'all 0.3s ease',
+  marginTop: '2px',
+  letterSpacing: '1px',
+  fontWeight: '500',
+  width: '63%',
+  userSelect: 'none',
+};
+
 class Signin extends React.Component {
-  constructor(props) {
-    super(props);
-    this.state = {
-      signInEmail: '',
-      signInPassword: ''
-    }
-  }
+  state = { signInEmail: '', signInPassword: '', error: '' };
 
-  onEmailChange = (event) => {
-    this.setState({signInEmail: event.target.value})
-  }
+  handleChange = (field) => (e) => this.setState({ [field]: e.target.value, error: '' });
 
-  onPasswordChange = (event) => {
-    this.setState({signInPassword: event.target.value})
-  }
+  saveAuthTokenInSession = (token) => window.sessionStorage.setItem('token', token);
 
   onSubmitSignIn = () => {
+    const { signInEmail, signInPassword } = this.state;
     fetch('http://localhost:3000/signin', {
       method: 'post',
-      headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({
-        email: this.state.signInEmail,
-        password: this.state.signInPassword
-      })
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: signInEmail, password: signInPassword })
     })
-      .then(response => response.json())
-      .then(user => {
-        if (user.id) {
-          this.props.loadUser(user)
-          this.props.onRouteChange('home');
-        }
-      })
+    .then(res => res.json())
+    .then(data => {
+      if (data.userId && data.success === 'true') {
+        this.saveAuthTokenInSession(data.token);
+        fetch(`http://localhost:3000/profile/${data.userId}`, {
+          method: 'get',
+          headers: { 'Content-Type': 'application/json', 'Authorization': data.token }
+        })
+        .then(r => r.json())
+        .then(user => {
+          if (user?.email) {
+            this.props.loadUser(user);
+            this.props.onRouteChange('home');
+          } else this.setState({ error: 'Failed to load user profile.' });
+        })
+        .catch(() => this.setState({ error: 'Error fetching user profile.' }));
+      } else this.setState({ error: 'Wrong email or password.' });
+    })
+    .catch(() => this.setState({ error: 'Unable to sign in. Please try again later.' }));
   }
 
   render() {
     const { onRouteChange } = this.props;
+    const { signInEmail, signInPassword, error } = this.state;
+
+    const handleFocus = (e) => (e.target.style.borderColor = '#667eea');
+    const handleBlur = (e) => (e.target.style.borderColor = 'rgba(255, 255, 255, 0.3)');
+
     return (
-      <article className="br3 ba b--black-10 mv4 w-100 w-50-m w-25-l mw6 shadow-5 center">
+      <article className="br3 mv4 w-90 w-60-m w-25-l mw6 center" style={{
+        background: 'rgba(255,255,255,0.1)', backdropFilter: 'blur(10px)',
+        WebkitBackdropFilter: 'blur(10px)', borderRadius: '12px',
+        border: '1px solid rgba(255,255,255,0.2)', padding: '1rem',
+        boxShadow: '0 8px 32px rgba(0,0,0,0.2)'
+      }}>
         <main className="pa4 black-80">
           <div className="measure">
-            <fieldset id="sign_up" className="ba b--transparent ph0 mh0">
-              <legend className="f1 fw6 ph0 mh0">Sign In</legend>
-              <div className="mt3">
-                <label className="db fw6 lh-copy f6" htmlFor="email-address">Email</label>
-                <input
-                  className="pa2 input-reset ba bg-transparent hover-bg-black hover-white w-100"
-                  type="email"
-                  name="email-address"
-                  id="email-address"
-                  onChange={this.onEmailChange}
-                />
-              </div>
-              <div className="mv3">
-                <label className="db fw6 lh-copy f6" htmlFor="password">Password</label>
-                <input
-                  className="b pa2 input-reset ba bg-transparent hover-bg-black hover-white w-100"
-                  type="password"
-                  name="password"
-                  id="password"
-                  onChange={this.onPasswordChange}
-                />
-              </div>
+            <fieldset className="ba b--transparent ph0 mh0">
+              <legend style={{
+                color:'#fff', fontSize:'2.5rem', fontWeight:'600', textAlign:'center',
+                marginBottom:'1rem', textShadow:'0 0 8px rgba(255,255,255,0.2)', userSelect:'none',
+                minHeight:'40px'
+              }}>Sign In</legend>
+
+              {error && <div style={{
+                color:'#ff4d4d', fontWeight:'600', fontSize:'1rem', marginBottom:'1rem',
+                textAlign:'center', userSelect:'none', fontFamily:'Arial, sans-serif',
+                textShadow:'0 0 4px rgba(255,0,0,0.6)'
+              }}>{error}</div>}
+
+              {[
+                { label: 'Email', type: 'email', value: signInEmail, name: 'signInEmail' },
+                { label: 'Password', type: 'password', value: signInPassword, name: 'signInPassword' }
+              ].map(input => (
+                <div className={input.type === 'password' ? 'mv3' : 'mt3'} key={input.name}>
+                  <label className="db fw6 lh-copy f6" style={{ color:'rgba(255,255,255,0.9)' }}>{input.label}</label>
+                  <input
+                    className="pa2 input-reset ba bg-transparent hover-bg-black hover-white w-100"
+                    style={inputStyle}
+                    type={input.type}
+                    name={input.name}
+                    value={input.value}
+                    onChange={this.handleChange(input.name)}
+                    onFocus={handleFocus}
+                    onBlur={handleBlur}
+                  />
+                </div>
+              ))}
             </fieldset>
-            <div className="">
+
+            <div>
               <input
                 onClick={this.onSubmitSignIn}
-                className="b ph3 pv2 input-reset ba b--black bg-transparent grow pointer f6 dib"
                 type="submit"
-                value="Sign in"
+                value="Sign In"
+                style={buttonStyle}
+                onMouseEnter={e => { e.target.style.transform='translateY(-2px)'; e.target.style.boxShadow='0 12px 24px rgba(0,0,0,0.25)'; e.target.style.background='rgba(255,255,255,0.25)'; }}
+                onMouseLeave={e => { e.target.style.transform='none'; e.target.style.boxShadow='0 8px 32px rgba(0,0,0,0.2)'; e.target.style.background='rgba(255,255,255,0.15)'; }}
+                onMouseDown={e => e.target.style.transform='scale(0.96)'}
+                onMouseUp={e => e.target.style.transform='translateY(-2px)'}
               />
             </div>
+
             <div className="lh-copy mt3">
-              <p  onClick={() => onRouteChange('register')} className="f6 link dim black db pointer">Register</p>
+              <p onClick={() => onRouteChange('register')} className="f6 link dim white db pointer" style={{ textAlign:'center', marginTop:'1rem' }}>Register</p>
             </div>
           </div>
         </main>
