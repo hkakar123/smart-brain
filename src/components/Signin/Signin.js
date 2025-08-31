@@ -39,31 +39,24 @@ class Signin extends React.Component {
 
   onSubmitSignIn = () => {
     const { signInEmail, signInPassword } = this.state;
-    fetch('https://smart-brain-api-uok1.onrender.com/signin', {
-      method: 'post',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email: signInEmail, password: signInPassword })
-    })
-    .then(res => res.json())
-    .then(data => {
-      if (data.userId && data.success === 'true') {
-        this.saveAuthTokenInSession(data.token);
-        fetch(`https://smart-brain-api-uok1.onrender.com/${data.userId}`, {
-          method: 'get',
-          headers: { 'Content-Type': 'application/json', 'Authorization': data.token }
-        })
-        .then(r => r.json())
-        .then(user => {
-          if (user?.email) {
-            this.props.loadUser(user);
-            this.props.onRouteChange('home');
-          } else this.setState({ error: 'Failed to load user profile.' });
-        })
-        .catch(() => this.setState({ error: 'Error fetching user profile.' }));
-      } else this.setState({ error: 'Wrong email or password.' });
-    })
-    .catch(() => this.setState({ error: 'Unable to sign in. Please try again later.' }));
+ fetch(`https://smart-brain-api-uok1.onrender.com/profile/${data.userId}`, {
+  method: 'get',
+  headers: { 
+    'Content-Type': 'application/json', 
+    'Authorization': data.token 
   }
+})
+.then(r => r.json())
+.then(user => {
+  if (user?.email) {
+    this.props.loadUser(user);
+    this.props.onRouteChange('home');
+  } else {
+    this.setState({ error: 'Failed to load user profile.' });
+  }
+})
+.catch(() => this.setState({ error: 'Error fetching user profile.' }));
+
 
   render() {
     const { onRouteChange } = this.props;
