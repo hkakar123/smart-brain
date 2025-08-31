@@ -37,26 +37,53 @@ class Signin extends React.Component {
 
   saveAuthTokenInSession = (token) => window.sessionStorage.setItem('token', token);
 
-  onSubmitSignIn = () => {
+  onSubmitSignIn = async () => {
     const { signInEmail, signInPassword } = this.state;
- fetch(`https://smart-brain-api-uok1.onrender.com/profile/${data.userId}`, {
-  method: 'get',
-  headers: { 
-    'Content-Type': 'application/json', 
-    'Authorization': data.token 
-  }
-})
-.then(r => r.json())
-.then(user => {
-  if (user?.email) {
-    this.props.loadUser(user);
-    this.props.onRouteChange('home');
-  } else {
-    this.setState({ error: 'Failed to load user profile.' });
-  }
-})
-.catch(() => this.setState({ error: 'Error fetching user profile.' }));
 
+    if (!signInEmail.trim() || !signInPassword.trim()) {
+      this.setState({ error: 'Both fields are required.' });
+      return;
+    }
+
+    try {
+      console.log('Submitting sign in:', { signInEmail, signInPassword });
+
+      // 1. Sign in
+      const res = await fetch('https://smart-brain-api-uok1.onrender.com/signin', {
+        method: 'post',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: signInEmail, password: signInPassword })
+      });
+
+      const data = await res.json();
+      console.log('Backend response:', data);
+
+      if (data.userId && data.success === 'true') {
+        this.saveAuthTokenInSession(data.token);
+
+        // 2. Fetch user profile
+        const profileRes = await fetch(`https://smart-brain-api-uok1.onrender.com/profile/${data.userId}`, {
+          method: 'get',
+          headers: { 'Content-Type': 'application/json', 'Authorization': data.token }
+        });
+
+        const user = await profileRes.json();
+        console.log('Fetched user profile:', user);
+
+        if (user?.email) {
+          this.props.loadUser(user);
+          this.props.onRouteChange('home');
+        } else {
+          this.setState({ error: 'Failed to load user profile.' });
+        }
+      } else {
+        this.setState({ error: 'Wrong email or password.' });
+      }
+    } catch (err) {
+      console.error('Sign in error:', err);
+      this.setState({ error: 'Unable to sign in. Please try again later.' });
+    }
+  }
 
   render() {
     const { onRouteChange } = this.props;
@@ -87,10 +114,9 @@ class Signin extends React.Component {
                 textShadow:'0 0 4px rgba(255,0,0,0.6)'
               }}>{error}</div>}
 
-              {[
-                { label: 'Email', type: 'email', value: signInEmail, name: 'signInEmail' },
-                { label: 'Password', type: 'password', value: signInPassword, name: 'signInPassword' }
-              ].map(input => (
+              {[{ label: 'Email', type: 'email', value: signInEmail, name: 'signInEmail' },
+                { label: 'Password', type: 'password', value: signInPassword, name: 'signInPassword' }]
+              .map(input => (
                 <div className={input.type === 'password' ? 'mv3' : 'mt3'} key={input.name}>
                   <label className="db fw6 lh-copy f6" style={{ color:'rgba(255,255,255,0.9)' }}>{input.label}</label>
                   <input
