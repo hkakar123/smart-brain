@@ -9,9 +9,9 @@ class Profile extends React.Component {
       age: props.user.age,
       pet: props.user.pet,
       avatarFile: null,
-      avatarPreview: props.user.avatar || "http://tachyons.io/img/logo.jpg",
-      saving: false,      // track if save is in progress
-      error: null          // track save errors
+      avatarPreview: props.user.avatar || "https://i.pinimg.com/474x/9c/b0/70/9cb070d62dc738a0c3a1a408d68e4af5.jpg",
+      saving: false,      
+      error: null          
     };
   }
 

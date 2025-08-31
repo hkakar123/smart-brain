@@ -22,7 +22,7 @@ const FaceRecognition = ({ imageUrl, box, error, detecting }) => {
       )}
 
       {detecting && (
-        <div className="loader"></div> // ✅ CSS spinner
+        <div className="loader"></div> 
       )}
 
       {imageUrl && (

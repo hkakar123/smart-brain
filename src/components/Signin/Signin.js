@@ -48,7 +48,7 @@ class Signin extends React.Component {
     try {
       console.log('Submitting sign in:', { signInEmail, signInPassword });
 
-      // 1. Sign in
+      // Sign in
       const res = await fetch('https://smart-brain-api-uok1.onrender.com/signin', {
         method: 'post',
         headers: { 'Content-Type': 'application/json' },
@@ -61,7 +61,7 @@ class Signin extends React.Component {
       if (data.userId && data.success === 'true') {
         this.saveAuthTokenInSession(data.token);
 
-        // 2. Fetch user profile
+        // Fetch user profile
         const profileRes = await fetch(`https://smart-brain-api-uok1.onrender.com/profile/${data.userId}`, {
           method: 'get',
           headers: { 'Content-Type': 'application/json', 'Authorization': data.token }

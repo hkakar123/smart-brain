@@ -28,7 +28,7 @@ class App extends Component {
       isSignedIn: false,
       isProfileOpen: false,
       detectError: '',
-      detecting: false, // ✅ spinner state
+      detecting: false, 
       loading: true,       
       user: {
         id: '',
@@ -132,7 +132,7 @@ class App extends Component {
       return;
     }
 
-    this.setState({ detectError: '', detecting: true }); // ✅ start spinner
+    this.setState({ detectError: '', detecting: true }); 
 
     fetch(`${API_BASE_URL}/imageurl`, {
       method: 'post',
@@ -148,7 +148,7 @@ class App extends Component {
           detectError: 'Unauthorized. Please sign in again.', 
           imageUrl: '',            
           box: [],
-          detecting: false // ✅ stop spinner
+          detecting: false 
         });
         return null; 
       }
@@ -188,7 +188,7 @@ class App extends Component {
       this.setState({ detectError: 'Something went wrong. Try again.' });
     })
     .finally(() => {
-      this.setState({ detecting: false }); // ✅ stop spinner
+      this.setState({ detecting: false }); 
     });
   };
 
