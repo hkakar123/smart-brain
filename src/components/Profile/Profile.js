@@ -56,7 +56,7 @@ class Profile extends React.Component {
     };
 
     try {
-      const resp = await fetch(`http://localhost:3000/profile/${this.props.user.id}`, {
+      const resp = await fetch(`https://smart-brain-api-uok1.onrender.com/profile/${this.props.user.id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',

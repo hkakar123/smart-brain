@@ -14,7 +14,7 @@ import Modal from './components/Modal/Modal';
 import Profile from './components/Profile/Profile';
 import LoadingScreen from './components/LoadingScreen/LoadingScreen';
 
-const API_BASE_URL = 'http://localhost:3000';
+const API_BASE_URL = process.env.REACT_APP_API_URL;
 
 class App extends Component {
   constructor(props) {

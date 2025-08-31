@@ -51,7 +51,7 @@ class Register extends React.Component {
 
     try {
       // 1. Send registration data to the backend
-      const resp = await fetch('http://localhost:3000/register', {
+      const resp = await fetch('https://smart-brain-api-uok1.onrender.com/register', {
         method: 'post',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -70,7 +70,7 @@ class Register extends React.Component {
         window.sessionStorage.setItem('token', data.token);
 
         // 5. Fetch the user's complete profile using the new token
-        const profileResp = await fetch(`http://localhost:3000/profile/${data.userId}`, {
+        const profileResp = await fetch(`https://smart-brain-api-uok1.onrender.com/profile/${data.userId}`, {
           method: 'get',
           headers: {
             'Content-Type': 'application/json',
