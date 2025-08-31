@@ -1,4 +1,4 @@
-// App.js (Fully integrated with spinner and image load fix)
+// App.js
 import React, { Component } from 'react';
 import Navigation from './components/Navigation/Navigation';
 import Signin from './components/Signin/Signin';
@@ -23,18 +23,18 @@ class App extends Component {
       init: false,
       input: '',
       imageUrl: '',
-      box: [],
-      route: 'signin',
+      box: [],  
+      route: 'signin', 
       isSignedIn: false,
       isProfileOpen: false,
       detectError: '',
       detecting: false,
-      loading: true,
+      loading: true,       
       user: {
         id: '',
         name: '',
         email: '',
-        entries: 0,
+        entries: 0, 
         joined: '',
         pet: '',
         age: '',
@@ -53,7 +53,7 @@ class App extends Component {
         joined: data.joined,
         pet: data.pet || '',
         age: data.age || '',
-        avatar: data.avatar || ''
+        avatar: data.avatar || '' 
       }
     });
   }
@@ -103,10 +103,12 @@ class App extends Component {
     this.setState({ input: event.target.value });
   };
 
-  calculateFaceLocations = (data, image) => {
-    if (!data.outputs || !data.outputs[0].data.regions || !image) return [];
-    const width = image.width;
-    const height = image.height;
+  calculateFaceLocations = (data) => {
+    if (!data.outputs || !data.outputs[0].data.regions) return [];
+    const image = document.getElementById('inputimage');
+    if (!image || !image.width || !image.height) return [];
+    const width = Number(image.width);
+    const height = Number(image.height);
 
     return data.outputs[0].data.regions.map(region => {
       const boundingBox = region.region_info.bounding_box;
@@ -121,69 +123,84 @@ class App extends Component {
 
   displayFaceBox = (boxes) => {
     if (boxes) {
-      this.setState({ box: boxes });
+      this.setState({ box: boxes });      
     }
   };
 
-onButtonSubmit = () => {
-  const { input, imageUrl } = this.state;
+  onButtonSubmit = () => {
+    const { input, imageUrl } = this.state;
 
-  if (!input.trim()) {
-    this.setState({ detectError: 'Please enter a valid image URL before detecting.' });
-    return;
-  }
+    if (!input.trim()) {
+      this.setState({ detectError: 'Please enter a valid image URL before detecting.' });
+      return;
+    }
 
-  // Check if the same image was already detected
-  if (input === imageUrl) {
-    this.setState({ detectError: 'Already detected this image.' });
-    return;
-  }
+    // If same image, do not call API, just show message
+    if (input === imageUrl) {
+      this.setState({ detectError: 'Already detected this image.' });
+      return;
+    }
 
-  this.setState({ detectError: '', detecting: true, imageUrl: input, box: [] });
-};
+    this.setState({ detectError: '', detecting: true });
 
+    fetch(`${API_BASE_URL}/imageurl`, {
+      method: 'post',
+      headers: { 
+        'Content-Type': 'application/json',
+        'Authorization': window.sessionStorage.getItem('token') 
+      },
+      body: JSON.stringify({ input })
+    })
+    .then(async response => {
+      if (response.status === 401) {
+        this.setState({ 
+          detectError: 'Unauthorized. Please sign in again.', 
+          imageUrl: '',            
+          box: [],
+          detecting: false
+        });
+        return null; 
+      }
+      return response.json();
+    })
+    .then(response => {
+      if (!response) return;
 
-  onImageLoad = async (image) => {
-    const { input } = this.state;
-    if (!input) return;
+      if (response.outputs) {
+        // Set the new image URL
+        this.setState({ imageUrl: input });
 
-    try {
-      const resp = await fetch(`${API_BASE_URL}/imageurl`, {
-        method: 'post',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': window.sessionStorage.getItem('token')
-        },
-        body: JSON.stringify({ input })
-      });
-      const data = await resp.json();
-      if (!data || !data.outputs) return;
+        // Update entries
+        fetch(`${API_BASE_URL}/image`, {
+          method: 'put',
+          headers: { 
+            'Content-Type': 'application/json',
+            'Authorization': window.sessionStorage.getItem('token') 
+          },
+          body: JSON.stringify({ id: this.state.user.id })
+        })
+        .then(resp => resp.json())
+        .then(count => {
+          this.setState(prevState => ({
+            user: {
+              ...prevState.user,
+              entries: Number(count.entries ?? count)
+            }
+          }));
+        })
+        .catch(console.log);
 
-      // Update entries
-      fetch(`${API_BASE_URL}/image`, {
-        method: 'put',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': window.sessionStorage.getItem('token')
-        },
-        body: JSON.stringify({ id: this.state.user.id })
-      })
-      .then(res => res.json())
-      .then(count => {
-        this.setState(prevState => ({
-          user: { ...prevState.user, entries: Number(count.entries ?? count) }
-        }));
-      })
-      .catch(console.log);
-
-      const boxes = this.calculateFaceLocations(data, image);
-      this.displayFaceBox(boxes);
-    } catch (err) {
+        const boxes = this.calculateFaceLocations(response);
+        this.displayFaceBox(boxes);
+      }
+    })
+    .catch(err => {
       console.error(err);
       this.setState({ detectError: 'Something went wrong. Try again.' });
-    } finally {
+    })
+    .finally(() => {
       this.setState({ detecting: false });
-    }
+    });
   };
 
   onRouteChange = async (route) => {
@@ -202,10 +219,20 @@ onButtonSubmit = () => {
           console.error('Error signing out:', err);
         }
       }
-      window.sessionStorage.removeItem('token');
+
+      window.sessionStorage.removeItem('token'); 
       return this.setState({
-        isSignedIn: false,
-        user: { id: '', name: '', email: '', entries: 0, joined: '', pet: '', age: '', avatar: '' },
+        isSignedIn: false, 
+        user: {
+          id: '',
+          name: '',
+          email: '',
+          entries: 0,
+          joined: '',
+          pet: '',
+          age: '',
+          avatar: ''
+        },
         route: 'signin',
         imageUrl: '',
         input: '',
@@ -220,13 +247,17 @@ onButtonSubmit = () => {
   }
 
   toggleModal = () => {
-    this.setState(prevState => ({ isProfileOpen: !prevState.isProfileOpen }));
+    this.setState(prevState => ({
+      isProfileOpen: !prevState.isProfileOpen
+    }));
   }
 
   render() {
     const { isSignedIn, imageUrl, route, box, detectError, detecting, isProfileOpen, user, loading } = this.state;
 
-    if (loading) return <LoadingScreen />;
+    if (loading) {
+      return <LoadingScreen />;
+    }
 
     return (
       <div className="App">
@@ -252,29 +283,21 @@ onButtonSubmit = () => {
             }}
           />
         )}
-
         <Navigation isSignedIn={isSignedIn} onRouteChange={this.onRouteChange} toggleModal={this.toggleModal} user={user}/>
-        
-        { route === 'home' ?
+        { route === 'home' ? 
           <div>
             { isProfileOpen && (
               <Modal>
                 <Profile loadUser={this.loadUser} user={user} isProfileOpen={isProfileOpen} toggleModal={this.toggleModal}/>
-              </Modal>
+              </Modal> 
             )}
             <Logo />
             <Rank name={user.name} entries={user.entries}/>
             <ImageLinkForm onInputChange={this.onInputChange} onButtonSubmit={this.onButtonSubmit} />
-            <FaceRecognition
-              imageUrl={imageUrl}
-              box={box}
-              error={detectError}
-              detecting={detecting}
-              onImageLoad={this.onImageLoad}
-            />
+            <FaceRecognition imageUrl={imageUrl} box={box} error={detectError} detecting={detecting} />
           </div>
-          : (route === 'signin'
-            ? <Signin loadUser={this.loadUser} onRouteChange={this.onRouteChange}/>
+          : (route === 'signin' 
+            ? <Signin loadUser={this.loadUser} onRouteChange={this.onRouteChange}/> 
             : <Register loadUser={this.loadUser} onRouteChange={this.onRouteChange}/>
           )
         }
