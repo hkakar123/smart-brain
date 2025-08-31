@@ -1,4 +1,4 @@
-// App.js (Updated to fix first-click face detection issue)
+// App.js (Updated with modern loading screen and persistent login fix)
 import React, { Component } from 'react';
 import Navigation from './components/Navigation/Navigation';
 import Signin from './components/Signin/Signin';
@@ -24,7 +24,6 @@ class App extends Component {
       input: '',
       imageUrl: '',
       box: [],  
-      faceData: null, // ✅ store raw API data temporarily
       route: 'signin', 
       isSignedIn: false,
       isProfileOpen: false,
@@ -42,20 +41,20 @@ class App extends Component {
     };
   }
 
-  loadUser = (data) => {
-    this.setState({
-      user: {
-        id: data.id,
-        name: data.name,
-        email: data.email,
-        entries: data.entries,
-        joined: data.joined,
-        pet: data.pet || '',
-        age: data.age || '',
-        avatar: data.avatar || '' 
-      }
-    });
-  }
+loadUser = (data) => {
+  this.setState({
+    user: {
+      id: data.id,
+      name: data.name,
+      email: data.email,
+      entries: data.entries,
+      joined: data.joined,
+      pet: data.pet || '',
+      age: data.age || '',
+      avatar: data.avatar || '' 
+    }
+  });
+}
 
   async componentDidMount() {
     const initParticles = async (engine) => {
@@ -103,9 +102,9 @@ class App extends Component {
   };
 
   calculateFaceLocations = (data) => {
+
     if (!data.outputs || !data.outputs[0].data.regions) return [];
     const image = document.getElementById('inputimage');
-    if (!image) return []; // ✅ safety check
     const width = Number(image.width);
     const height = Number(image.height);
     
@@ -122,104 +121,116 @@ class App extends Component {
 
   displayFaceBox = (boxes) => {
     if(boxes) {
-      this.setState({ box: boxes });      
+    this.setState({ box: boxes });      
     }
   };
 
-  onImageLoad = () => {
-    if (this.state.faceData) {
-      const boxes = this.calculateFaceLocations(this.state.faceData);
-      this.displayFaceBox(boxes);
-      this.setState({ faceData: null }); // clear temporary data
-    }
+onButtonSubmit = () => {
+  if (!this.state.input.trim()) {
+    this.setState({ detectError: 'Please enter a valid image URL before detecting.' });
+    return;
   }
 
-  onButtonSubmit = () => {
-    if (!this.state.input.trim()) {
-      this.setState({ detectError: 'Please enter a valid image URL before detecting.' });
-      return;
-    }
+  this.setState({ detectError: '' });
 
-    this.setState({ detectError: '', imageUrl: this.state.input }, async () => {
-      try {
-        const response = await fetch(`${API_BASE_URL}/imageurl`, {
-          method: 'post',
-          headers: { 
-            'Content-Type': 'application/json',
-            'Authorization': window.sessionStorage.getItem('token') 
-          },
-          body: JSON.stringify({ input: this.state.input })
-        });
-        const data = await response.json();
-        if (!data) return;
-
-        // Save entries count
-        await fetch(`${API_BASE_URL}/image`, {
-          method: 'put',
-          headers: { 
-            'Content-Type': 'application/json',
-            'Authorization': window.sessionStorage.getItem('token') 
-          },
-          body: JSON.stringify({ id: this.state.user.id })
-        }).then(res => res.json())
-          .then(count => {
-            this.setState(prevState => ({
-              user: { ...prevState.user, entries: Number(count.entries ?? count) }
-            }));
-          })
-          .catch(console.log);
-
-        // Store face data temporarily, will calculate when image loads
-        this.setState({ faceData: data });
-      } catch (err) {
-        console.error(err);
-        this.setState({ detectError: 'Something went wrong. Try again.' });
-      }
-    });
-  };
-
-  onRouteChange = async (route) => {
-    if(route === 'signout') {
-      const token = window.sessionStorage.getItem('token');
-      if(token){
-        try {
-          await fetch(`${API_BASE_URL}/signout`, {
-            method: 'post',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': token
-            }
-          });
-        } catch(err) {
-          console.error('Error signing out:', err);
-        }
-      }
-
-      window.sessionStorage.removeItem('token');
-      return this.setState({
-        isSignedIn: false, 
-        user: {
-          id: '',
-          name: '',
-          email: '',
-          entries: 0,
-          joined: '',
-          pet: '',
-          age: '',
-          avatar: ''
-        },
-        route: 'signin',
-        imageUrl: '',
-        input: '',
-        box: [],
-        detectError: ''
+  fetch(`${API_BASE_URL}/imageurl`, {
+    method: 'post',
+    headers: { 
+      'Content-Type': 'application/json',
+      'Authorization': window.sessionStorage.getItem('token') 
+    },
+    body: JSON.stringify({ input: this.state.input })
+  })
+  .then(async response => {
+    if (response.status === 401) {
+      this.setState({ 
+        detectError: 'Unauthorized. Please sign in again.', 
+        imageUrl: '',            
+        boxes: []               
       });
-    } else if(route === 'home') {
-      this.setState({ route: route, isSignedIn: true });
-    } else {
-      this.setState({ route: route });
+      return null; 
     }
+    return response.json();
+  })
+  .then(response => {
+    if (!response) return; 
+
+    if (response.outputs) {
+      // ✅ only set image now, after authorization confirmed
+      this.setState({ imageUrl: this.state.input });
+
+      fetch(`${API_BASE_URL}/image`, {
+        method: 'put',
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': window.sessionStorage.getItem('token') 
+        },
+        body: JSON.stringify({ id: this.state.user.id })
+      })
+      .then(resp => resp.json())
+      .then(count => {
+        this.setState(prevState => ({
+          user: {
+            ...prevState.user,
+            entries: Number(count.entries ?? count)
+          }
+        }));
+      })
+      .catch(console.log);
+
+      const boxes = this.calculateFaceLocations(response);
+      this.displayFaceBox(boxes);
+    }
+  })
+  .catch(err => {
+    console.error(err);
+    this.setState({ detectError: 'Something went wrong. Try again.' });
+  });
+};
+
+
+ onRouteChange = async (route) => {
+  if(route === 'signout') {
+    const token = window.sessionStorage.getItem('token');
+    if(token){
+      try {
+        await fetch(`${API_BASE_URL}/signout`, {
+          method: 'post',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': token
+          }
+        });
+      } catch(err) {
+        console.error('Error signing out:', err);
+      }
+    }
+
+    window.sessionStorage.removeItem('token'); // remove token from session storage
+    return this.setState({
+      isSignedIn: false, 
+      user: {
+        id: '',
+        name: '',
+        email: '',
+        entries: 0,
+        joined: '',
+        pet: '',
+        age: '',
+        avatar: ''
+      },
+      route: 'signin',
+      imageUrl: '',
+      input: '',
+      box: [],
+      detectError: ''
+    });
+  } else if(route === 'home') {
+    this.setState({ route: route, isSignedIn: true });
+  } else {
+    this.setState({ route: route });
   }
+}
 
   toggleModal = () => {
     this.setState(prevState => ({
@@ -269,7 +280,7 @@ class App extends Component {
             <Logo />
             <Rank name={user.name} entries={user.entries}/>
             <ImageLinkForm onInputChange={this.onInputChange} onButtonSubmit={this.onButtonSubmit} />
-            <FaceRecognition imageUrl={imageUrl} box={box} error={detectError} onImageLoad={this.onImageLoad}/>
+            <FaceRecognition imageUrl={imageUrl} box={box} error={detectError} />
           </div>
           : (route === 'signin' 
             ? <Signin loadUser={this.loadUser} onRouteChange={this.onRouteChange}/> 
