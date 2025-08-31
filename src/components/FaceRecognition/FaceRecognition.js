@@ -1,12 +1,9 @@
 import React from 'react';
 import './FaceRecognition.css';
 
-const FaceRecognition = ({ imageUrl, box, error }) => {
+const FaceRecognition = ({ imageUrl, box, error, onImageLoad }) => {
   return (
-    <div
-      className='center ma mt2'
-      style={{ position: 'relative', display: 'inline-block' }}
-    >
+    <div className='center ma mt2' style={{ position: 'relative', display: 'inline-block' }}>
       {error && (
         <div style={{
           color: '#ff4d4d',
@@ -27,6 +24,7 @@ const FaceRecognition = ({ imageUrl, box, error }) => {
           alt=""
           src={imageUrl}
           style={{ width: '500px', height: 'auto', display: 'block' }}
+          onLoad={onImageLoad} // ✅ calculate boxes after image loads
         />
       )}
 
