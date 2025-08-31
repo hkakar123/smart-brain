@@ -24,7 +24,7 @@ class App extends Component {
       input: '',
       imageUrl: '',
       box: [],
-      latestApiResponse: null, // ✅ store API response for box calculation
+      latestApiResponse: null, 
       route: 'signin',
       isSignedIn: false,
       isProfileOpen: false,
@@ -145,7 +145,6 @@ class App extends Component {
       if (!response) return; 
 
       if (response.outputs) {
-        // ✅ set imageUrl first, then store API response
         this.setState({ imageUrl: this.state.input, latestApiResponse: response });
 
         fetch(`${API_BASE_URL}/image`, {
@@ -166,12 +165,10 @@ class App extends Component {
       }
     })
     .catch(err => {
-      console.error(err);
       this.setState({ detectError: 'Something went wrong. Try again.' });
     });
   };
 
-  // ✅ called from FaceRecognition on image load
   calculateBoxesOnLoad = () => {
     if (this.state.latestApiResponse) {
       const boxes = this.calculateFaceLocations(this.state.latestApiResponse);
@@ -257,7 +254,7 @@ class App extends Component {
               imageUrl={imageUrl} 
               box={box} 
               error={detectError} 
-              onImageLoad={this.calculateBoxesOnLoad} // ✅ pass handler
+              onImageLoad={this.calculateBoxesOnLoad} 
             />
           </div>
           : (route === 'signin' 

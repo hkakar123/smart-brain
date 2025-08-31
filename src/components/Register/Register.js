@@ -62,9 +62,6 @@ class Register extends React.Component {
 
       const data = await resp.json();
 
-      // <-- console log for debugging backend response
-      console.log('Backend response:', data);
-
       if (!resp.ok) {
         this.setState({ error: data.error || 'Registration failed. Please check your input.' });
         return;
@@ -92,7 +89,6 @@ class Register extends React.Component {
         this.setState({ error: 'Registration failed. Please try again.' });
       }
     } catch (err) {
-      console.error('Registration error:', err);
       this.setState({ error: 'Registration failed. Please try again later.' });
     }
   }

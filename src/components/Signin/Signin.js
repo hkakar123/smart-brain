@@ -46,8 +46,6 @@ class Signin extends React.Component {
     }
 
     try {
-      console.log('Submitting sign in:', { signInEmail, signInPassword });
-
       // Sign in
       const res = await fetch('https://smart-brain-api-uok1.onrender.com/signin', {
         method: 'post',
@@ -56,7 +54,6 @@ class Signin extends React.Component {
       });
 
       const data = await res.json();
-      console.log('Backend response:', data);
 
       if (data.userId && data.success === 'true') {
         this.saveAuthTokenInSession(data.token);
@@ -68,7 +65,6 @@ class Signin extends React.Component {
         });
 
         const user = await profileRes.json();
-        console.log('Fetched user profile:', user);
 
         if (user?.email) {
           this.props.loadUser(user);
