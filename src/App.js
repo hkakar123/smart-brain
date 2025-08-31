@@ -125,15 +125,23 @@ class App extends Component {
     }
   };
 
-  onButtonSubmit = () => {
-    if (!this.state.input.trim()) {
-      this.setState({ detectError: 'Please enter a valid image URL before detecting.' });
-      return;
-    }
+onButtonSubmit = () => {
+  const { input, imageUrl } = this.state;
 
-    this.setState({ detectError: '', detecting: true });
-    this.setState({ imageUrl: this.state.input, box: [] });
-  };
+  if (!input.trim()) {
+    this.setState({ detectError: 'Please enter a valid image URL before detecting.' });
+    return;
+  }
+
+  // Check if the same image was already detected
+  if (input === imageUrl) {
+    this.setState({ detectError: 'Already detected this image.' });
+    return;
+  }
+
+  this.setState({ detectError: '', detecting: true, imageUrl: input, box: [] });
+};
+
 
   onImageLoad = async (image) => {
     const { input } = this.state;
