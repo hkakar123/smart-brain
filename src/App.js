@@ -23,22 +23,22 @@ class App extends Component {
       init: false,
       input: '',
       imageUrl: '',
-      box: [],  
-      route: 'signin', 
+      lastApiResponse: null,
+      box: [],
+      route: 'signin',
       isSignedIn: false,
       isProfileOpen: false,
       detectError: '',
       detecting: false,
-      loading: true,       
+      loading: true,
       user: {
         id: '',
         name: '',
         email: '',
-        entries: 0, 
+        entries: 0,
         joined: '',
         pet: '',
-        age: '',
-        avatar: ''
+        age: ''
       }
     };
   }
@@ -53,7 +53,7 @@ class App extends Component {
         joined: data.joined,
         pet: data.pet || '',
         age: data.age || '',
-        avatar: data.avatar || '' 
+        avatar: data.avatar || ''
       }
     });
   }
@@ -123,20 +123,27 @@ class App extends Component {
 
   displayFaceBox = (boxes) => {
     if (boxes) {
-      this.setState({ box: boxes });      
+      this.setState({ box: boxes });
     }
   };
 
-  onButtonSubmit = () => {
-    const { input, imageUrl } = this.state;
+  handleImageLoad = () => {
+    const { lastApiResponse, imageUrl } = this.state;
+    if (lastApiResponse && imageUrl) {
+      const boxes = this.calculateFaceLocations(lastApiResponse);
+      this.displayFaceBox(boxes);
+      this.setState({ lastApiResponse: null });
+    }
+  }
 
-    if (!input.trim()) {
+  onButtonSubmit = () => {
+    const input = this.state.input.trim();
+    if (!input) {
       this.setState({ detectError: 'Please enter a valid image URL before detecting.' });
       return;
     }
 
-    // If same image, do not call API, just show message
-    if (input === imageUrl) {
+    if (input === this.state.imageUrl) {
       this.setState({ detectError: 'Already detected this image.' });
       return;
     }
@@ -145,21 +152,21 @@ class App extends Component {
 
     fetch(`${API_BASE_URL}/imageurl`, {
       method: 'post',
-      headers: { 
+      headers: {
         'Content-Type': 'application/json',
-        'Authorization': window.sessionStorage.getItem('token') 
+        'Authorization': window.sessionStorage.getItem('token')
       },
       body: JSON.stringify({ input })
     })
     .then(async response => {
       if (response.status === 401) {
-        this.setState({ 
-          detectError: 'Unauthorized. Please sign in again.', 
-          imageUrl: '',            
+        this.setState({
+          detectError: 'Unauthorized. Please sign in again.',
+          imageUrl: '',
           box: [],
           detecting: false
         });
-        return null; 
+        return null;
       }
       return response.json();
     })
@@ -167,15 +174,13 @@ class App extends Component {
       if (!response) return;
 
       if (response.outputs) {
-        // Set the new image URL
-        this.setState({ imageUrl: input });
+        this.setState({ imageUrl: input, lastApiResponse: response });
 
-        // Update entries
         fetch(`${API_BASE_URL}/image`, {
           method: 'put',
-          headers: { 
+          headers: {
             'Content-Type': 'application/json',
-            'Authorization': window.sessionStorage.getItem('token') 
+            'Authorization': window.sessionStorage.getItem('token')
           },
           body: JSON.stringify({ id: this.state.user.id })
         })
@@ -189,9 +194,6 @@ class App extends Component {
           }));
         })
         .catch(console.log);
-
-        const boxes = this.calculateFaceLocations(response);
-        this.displayFaceBox(boxes);
       }
     })
     .catch(err => {
@@ -204,25 +206,21 @@ class App extends Component {
   };
 
   onRouteChange = async (route) => {
-    if(route === 'signout') {
+    if (route === 'signout') {
       const token = window.sessionStorage.getItem('token');
-      if(token){
+      if (token) {
         try {
           await fetch(`${API_BASE_URL}/signout`, {
             method: 'post',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': token
-            }
+            headers: { 'Content-Type': 'application/json', 'Authorization': token }
           });
-        } catch(err) {
+        } catch (err) {
           console.error('Error signing out:', err);
         }
       }
-
-      window.sessionStorage.removeItem('token'); 
+      window.sessionStorage.removeItem('token');
       return this.setState({
-        isSignedIn: false, 
+        isSignedIn: false,
         user: {
           id: '',
           name: '',
@@ -239,10 +237,10 @@ class App extends Component {
         box: [],
         detectError: ''
       });
-    } else if(route === 'home') {
-      this.setState({ route: route, isSignedIn: true });
+    } else if (route === 'home') {
+      this.setState({ route, isSignedIn: true });
     } else {
-      this.setState({ route: route });
+      this.setState({ route });
     }
   }
 
@@ -264,7 +262,7 @@ class App extends Component {
         {this.state.init && (
           <Particles className="particles" id="tsparticles"
             options={{
-              background: { color: { value: "transparent" }},
+              background: { color: { value: "transparent" } },
               fpsLimit: 120,
               interactivity: {
                 events: { onClick: { enable: true, mode: "push" }, onHover: { enable: true, mode: "repulse" }, resize: true },
@@ -276,29 +274,29 @@ class App extends Component {
                 move: { direction: "none", enable: true, outModes: { default: "bounce" }, speed: 2 },
                 number: { density: { enable: true, area: 800 }, value: 200 },
                 opacity: { value: 0.5 },
-                shape: { type: "image", image: { src: "https://craftkreatively.com/cdn/shop/files/412152fa-fa1c-5994-b289-f115f30df93e.jpg?v=1710446922&width=2363", width: 32, height: 32 }},
+                shape: { type: "image", image: { src: "https://craftkreatively.com/cdn/shop/files/412152fa-fa1c-5994-b289-f115f30df93e.jpg?v=1710446922&width=2363", width: 32, height: 32 } },
                 size: { value: { min: 1, max: 5 } }
               },
               detectRetina: true
             }}
           />
         )}
-        <Navigation isSignedIn={isSignedIn} onRouteChange={this.onRouteChange} toggleModal={this.toggleModal} user={user}/>
-        { route === 'home' ? 
+        <Navigation isSignedIn={isSignedIn} onRouteChange={this.onRouteChange} toggleModal={this.toggleModal} user={user} />
+        { route === 'home' ?
           <div>
             { isProfileOpen && (
               <Modal>
-                <Profile loadUser={this.loadUser} user={user} isProfileOpen={isProfileOpen} toggleModal={this.toggleModal}/>
-              </Modal> 
+                <Profile loadUser={this.loadUser} user={user} isProfileOpen={isProfileOpen} toggleModal={this.toggleModal} />
+              </Modal>
             )}
             <Logo />
-            <Rank name={user.name} entries={user.entries}/>
+            <Rank name={user.name} entries={user.entries} />
             <ImageLinkForm onInputChange={this.onInputChange} onButtonSubmit={this.onButtonSubmit} />
-            <FaceRecognition imageUrl={imageUrl} box={box} error={detectError} detecting={detecting} />
+            <FaceRecognition imageUrl={imageUrl} box={box} error={detectError} detecting={detecting} onImageLoad={this.handleImageLoad} />
           </div>
-          : (route === 'signin' 
-            ? <Signin loadUser={this.loadUser} onRouteChange={this.onRouteChange}/> 
-            : <Register loadUser={this.loadUser} onRouteChange={this.onRouteChange}/>
+          : (route === 'signin'
+            ? <Signin loadUser={this.loadUser} onRouteChange={this.onRouteChange} />
+            : <Register loadUser={this.loadUser} onRouteChange={this.onRouteChange} />
           )
         }
       </div>
