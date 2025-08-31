@@ -101,23 +101,24 @@ loadUser = (data) => {
     this.setState({ input: event.target.value });
   };
 
-  calculateFaceLocations = (data) => {
+calculateFaceLocations = (data) => {
+  if (!data.outputs || !data.outputs[0].data.regions) return [];
+  const image = document.getElementById('inputimage');
+  if (!image || !image.width || !image.height) return []; // ✅ return empty if image not ready
+  const width = Number(image.width);
+  const height = Number(image.height);
 
-    if (!data.outputs || !data.outputs[0].data.regions) return [];
-    const image = document.getElementById('inputimage');
-    const width = Number(image.width);
-    const height = Number(image.height);
-    
-    return data.outputs[0].data.regions.map(region => {
-      const boundingBox = region.region_info.bounding_box;
-      return {
-        leftCol: boundingBox.left_col * width,
-        topRow: boundingBox.top_row * height,
-        rightCol: width - (boundingBox.right_col * width),
-        bottomRow: height - (boundingBox.bottom_row * height),
-      };
-    });
-  };
+  return data.outputs[0].data.regions.map(region => {
+    const boundingBox = region.region_info.bounding_box;
+    return {
+      leftCol: boundingBox.left_col * width,
+      topRow: boundingBox.top_row * height,
+      rightCol: width - (boundingBox.right_col * width),
+      bottomRow: height - (boundingBox.bottom_row * height),
+    };
+  });
+};
+
 
   displayFaceBox = (boxes) => {
     if(boxes) {
