@@ -10,8 +10,8 @@ class Profile extends React.Component {
       pet: props.user.pet,
       avatarFile: null,
       avatarPreview: props.user.avatar || "http://tachyons.io/img/logo.jpg",
-      saving: false,      
-      error: null          
+      saving: false,      // track if save is in progress
+      error: null          // track save errors
     };
   }
 
@@ -93,12 +93,7 @@ class Profile extends React.Component {
           <div className="modal-close" onClick={toggleModal}>&times;</div>
           <main className="profile-content">
 
-            <img
-              src={this.state.avatarPreview || this.props.user.avatar || "https://i.pinimg.com/474x/9c/b0/70/9cb070d62dc738a0c3a1a408d68e4af5.jpg"}
-              alt="avatar"
-              className="profile-avatar"
-              />
-
+            <img src={avatarPreview} alt="avatar" className="profile-avatar" />
 
             <h1 className="profile-title">{name}</h1>
 
