@@ -1,7 +1,9 @@
-import React from 'react';
+import React, { useRef } from 'react';
 import './FaceRecognition.css';
 
-const FaceRecognition = ({ imageUrl, box, error, detecting }) => {
+const FaceRecognition = ({ imageUrl, box, error, detecting, onImageLoad }) => {
+  const imgRef = useRef();
+
   return (
     <div
       className='center ma mt2'
@@ -21,16 +23,16 @@ const FaceRecognition = ({ imageUrl, box, error, detecting }) => {
         </div>
       )}
 
-      {detecting && (
-        <div className="loader"></div> // ✅ CSS spinner
-      )}
+      {detecting && <div className="loader"></div>}
 
       {imageUrl && (
         <img
           id="inputimage"
+          ref={imgRef}
           alt=""
           src={imageUrl}
           style={{ width: '500px', height: 'auto', display: 'block' }}
+          onLoad={() => onImageLoad(imgRef.current)}
         />
       )}
 
